@@ -2,13 +2,13 @@
 #define _WM_CONFIG_H
 
 struct WorkareaInsets wai = {
-    .top = 20,
-    .left = 0,
-    .right = 0,
-    .bottom = 20,
+    .top = 64+29,
+    .left = 64,
+    .right = 64,
+    .bottom = 64,
 };
 
-int gap_pixels = 5;
+int gap_pixels = 32;
 bool center_title = false;
 
 struct Rule rules[] = {
@@ -34,8 +34,7 @@ enum LayoutAlgorithm default_layout = LATile;
  * monitor 0, workspace 2 on monitor 1, and workspace 12 on monitor 3.
  * If none of these configurations matches, use default_workspace. */
 int initial_workspaces[] = {
-    2,  12, 2,      /* 2 monitors connected */
-    3,  20, 2, 12,  /* 3 monitors connected */
+    1, 3,      /* 2 monitors connected */
 };
 int default_workspace = 1;
 
