@@ -27,7 +27,7 @@ barinfo/katriabi: barinfo/barinfo.o util/util.o
 $(OBJ): $(wildcard */*.h) core/config.h core/theme.h barinfo/config.h
 
 core/theme.h:
-	../themes/make_theme_h.sh ../themes/motif >$@
+	../themes/make_theme_h.sh ../themes/punpun >$@
 
 core/config.h:
 	cp core/config.def.h $@
