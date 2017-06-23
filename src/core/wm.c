@@ -1527,10 +1527,7 @@ ipc_layout_floating_toggle(char arg)
 {
     (void)arg;
 
-    if (!is_something_focused())
-        return;
-
-    if (is_somehow_floating(focus))
+    if (monitors[selmon].layouts[monitors[selmon].active_workspace] == 2)
         monitors[selmon].layouts[monitors[selmon].active_workspace] = 0;
     else
         monitors[selmon].layouts[monitors[selmon].active_workspace] = 2;
