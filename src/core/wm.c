@@ -163,6 +163,7 @@ static void draw_text(Drawable d, XftFont *xfont, XftColor *col, int x, int y,
 static void handle_clientmessage(XEvent *e);
 static void handle_configurenotify(XEvent *e);
 static void handle_configurerequest(XEvent *e);
+static void handle_enternotify(XEvent *e);
 static void handle_expose(XEvent *e);
 static void handle_focusin(XEvent *e);
 static void handle_maprequest(XEvent *e);
@@ -277,6 +278,7 @@ static void (*x11_handler[LASTEvent])(XEvent *e) = {
     [ClientMessage] = handle_clientmessage,
     [ConfigureNotify] = handle_configurenotify,
     [ConfigureRequest] = handle_configurerequest,
+    [EnterNotify] = handle_enternotify,
     [Expose] = handle_expose,
     [FocusIn] = handle_focusin,
     [MapRequest] = handle_maprequest,
@@ -923,6 +925,21 @@ handle_configurerequest(XEvent *e)
         wc.stack_mode = ev->detail;
         XConfigureWindow(dpy, ev->window, ev->value_mask, &wc);
     }
+}
+
+void
+handle_enternotify(XEvent *e)
+{
+    XCrossingEvent *ev = &e->xcrossing;
+    struct Client *c;
+
+    if((ev->mode != NotifyNormal || ev->detail == NotifyInferior) && ev->window != root)
+        return;
+    if ((c = client_get_for_window(ev->window)))
+    {
+        manage_xfocus(c);
+        manage_focus_set(c);
+	}
 }
 
 void
@@ -1904,6 +1921,8 @@ manage(Window win, XWindowAttributes *wa)
 
     client_update_title(c);
     XSelectInput(dpy, c->win, 0
+                 /* Enternotify */
+                 | EnterWindowMask
                  /* FocusIn, FocusOut */
                  | FocusChangeMask
                  /* All kinds of properties, window titles, EWMH, ... */

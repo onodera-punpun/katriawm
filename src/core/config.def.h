@@ -26,7 +26,7 @@ struct Rule rules[] = {
 };
 
 /* Have a look at ipc.h for valid values. */
-enum LayoutAlgorithm default_layout = LATile;
+enum LayoutAlgorithm default_layout = LAFloat;
 
 /* When multiple monitors are connected to your workstation, you might
  * want to select different initial workspaces on each monitor. For
