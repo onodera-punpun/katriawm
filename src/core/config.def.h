@@ -9,6 +9,7 @@ struct WorkareaInsets wai = {
 };
 
 int gap_pixels = 32;
+float split_ratio = 0.618;
 bool center_title = false;
 
 struct Rule rules[] = {

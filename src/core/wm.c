@@ -941,7 +941,7 @@ handle_enternotify(XEvent *e)
     {
         manage_xfocus(c);
         manage_focus_set(c);
-	}
+    }
 }
 
 void
@@ -1820,79 +1820,60 @@ void
 layout_tile(int m)
 {
     struct Client *c;
-    int i, num_clients, at_y, slave_h, master_w, master_n;
-
-    /* Note: at_y, slave_h and master_w all count the *visible* sizes
-     * including decorations */
+    int i, num_clients, nx, ny, nw, nh;
 
     i = 0;
     num_clients = 0;
-    at_y = monitors[m].wy;
 
     for (c = clients; c; c = c->next)
         if (is_vis_on_mon(c, m) && !c->floating && !c->fullscreen)
             num_clients++;
 
-    master_w = monitors[m].ww / 2;
-    master_n = num_clients / 2;
+    nx = monitors[m].wx;
+    ny = monitors[m].wy;
+    nw = monitors[m].ww;
+    nh = monitors[m].wh;
 
     for (c = clients; c; c = c->next)
     {
         if (is_vis_on_mon(c, m) && !c->floating && !c->fullscreen)
         {
-            if (num_clients == 1)
+            if (i < num_clients - 1)
             {
-                /* Only one client total, just maximize it */
-                c->x = monitors[m].wx + c->m_left;
-                c->y = monitors[m].wy + c->m_top;
-                c->w = monitors[m].ww - c->m_left - c->m_right;
-                c->h = monitors[m].wh - c->m_top - c->m_bottom;
+                if (i % 2)
+                    nh /= 2;
+                else
+                    nw /= 2;
+                if ((i % 4) == 2)
+                    nx += nw;
+                else if ((i % 4) == 3)
+                    ny += nh;
             }
-            else
+            if ((i % 4) == 0)
+                ny -= nh;
+            else if ((i % 4) == 1)
+                nx += nw;
+            else if ((i % 4) == 2)
+                ny += nh;
+            else if ((i % 4) == 3)
+                nx -= nw;
+            if (i == 0)
             {
-                /* Reset at_y on column switch */
-                if (i == master_n)
-                    at_y = monitors[m].wy;
-
-                /* Decide which column to place this client into */
-                if (i < master_n)
-                {
-                    c->x = monitors[m].wx;
-                    c->w = master_w;
-                }
-                else
-                {
-                    c->x = monitors[m].wx + master_w;
-                    c->w = monitors[m].ww - master_w;
-                }
-
-                c->x += c->m_left;
-                c->w -= c->m_left + c->m_right;
-
-                c->y = at_y + c->m_top;
-
-                /* Clients in the last row get the remaining space in
-                 * order to avoid rounding issues. Note that we need to
-                 * add monitors[m].wy here because that's where at_y
-                 * started.
-                 *
-                 * Regular clients in the master or slave column get
-                 * their normal share of available space. */
-                if (i == num_clients - 1 || i == master_n - 1)
-                    slave_h = monitors[m].wh - at_y + monitors[m].wy;
-                else if (i < master_n)
-                    slave_h = monitors[m].wh / master_n;
-                else
-                    slave_h = monitors[m].wh / (num_clients - master_n);
-
-                c->h = slave_h - c->m_top - c->m_bottom;
-                at_y += slave_h;
+                if (num_clients != 1)
+                    nw = monitors[m].ww * split_ratio;
+                ny = monitors[m].wy;
             }
-
-            manage_apply_gaps(c);
-            manage_apply_size(c);
+            else if (i == 1)
+                nw = monitors[m].ww - nw;
             i++;
         }
+
+        c->x = nx + c->m_left;
+        c->y = ny + c->m_top;
+        c->w = nw - c->m_left - c->m_right;
+        c->h = nh - c->m_top - c->m_bottom;
+        manage_apply_gaps(c);
+        manage_apply_size(c);
     }
 }
 
