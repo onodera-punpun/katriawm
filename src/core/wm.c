@@ -1889,6 +1889,9 @@ manage(Window win, XWindowAttributes *wa)
     Window transient_for;
     size_t i;
     unsigned long wm_state[2];
+    int x, y, di;
+    unsigned int dui;
+    Window child, dummy;
 
     if (client_get_for_window(win))
     {
@@ -1965,6 +1968,14 @@ manage(Window win, XWindowAttributes *wa)
 
     D fprintf(stderr, __NAME_WM__": Client %p lives on WS %d on monitor %d\n",
               (void *)c, c->workspace, c->mon);
+
+    /* Spawn under mouse if floating */
+    if (is_somehow_floating(c) && is_vis_on_selmon(c))
+    {
+        XQueryPointer(dpy, root, &dummy, &child, &x, &y, &di, &di, &dui);
+        c->x = x - wa->width / 2;
+        c->y = y - wa->height / 2;
+    }
 
     manage_fit_on_monitor(c);
 
