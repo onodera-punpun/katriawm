@@ -43,6 +43,7 @@ enum IPCCommand
     IPCClientSwitchWorkspace,
     IPCClientSwitchWorkspaceAdjacent,
     IPCFloatersCollect,
+    IPCLayoutFloatingToggle,
     IPCLayoutSet,
     IPCMonitorSelectAdjacent,
     IPCMonitorSelectRecent,

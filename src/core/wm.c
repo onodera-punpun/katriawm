@@ -184,6 +184,7 @@ static void ipc_client_switch_monitor_adjacent(char arg);
 static void ipc_client_switch_workspace(char arg);
 static void ipc_client_switch_workspace_adjacent(char arg);
 static void ipc_floaters_collect(char arg);
+static void ipc_layout_floating_toggle(char arg);
 static void ipc_layout_set(char arg);
 static void ipc_monitor_select_adjacent(char arg);
 static void ipc_monitor_select_recent(char arg);
@@ -260,6 +261,7 @@ static void (*ipc_handler[IPCLast])(char arg) = {
     [IPCClientSwitchWorkspace] = ipc_client_switch_workspace,
     [IPCClientSwitchWorkspaceAdjacent] = ipc_client_switch_workspace_adjacent,
     [IPCFloatersCollect] = ipc_floaters_collect,
+    [IPCLayoutFloatingToggle] = ipc_layout_floating_toggle,
     [IPCLayoutSet] = ipc_layout_set,
     [IPCMonitorSelectAdjacent] = ipc_monitor_select_adjacent,
     [IPCMonitorSelectRecent] = ipc_monitor_select_recent,
@@ -1518,6 +1520,21 @@ ipc_floaters_collect(char arg)
     for (c = clients; c; c = c->next)
         if (is_vis_on_selmon(c) && is_somehow_floating(c))
             manage_fit_on_monitor(c);
+}
+
+void
+ipc_layout_floating_toggle(char arg)
+{
+    (void)arg;
+
+    if (!is_something_focused())
+        return;
+
+    if (is_somehow_floating(focus))
+        monitors[selmon].layouts[monitors[selmon].active_workspace] = 0;
+    else
+        monitors[selmon].layouts[monitors[selmon].active_workspace] = 2;
+    manage_arrange(selmon);
 }
 
 void
