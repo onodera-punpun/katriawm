@@ -2,13 +2,13 @@
 #define _WM_CONFIG_H
 
 struct WorkareaInsets wai = {
-    .top = 64+29,
-    .left = 64,
-    .right = 64,
-    .bottom = 64,
+    .top = 58+29,
+    .left = 58,
+    .right = 58,
+    .bottom = 58,
 };
 
-int gap_pixels = 32;
+int gap_pixels = 29;
 float split_ratio = 0.618;
 bool center_title = false;
 
