@@ -29,14 +29,7 @@ struct Rule rules[] = {
 /* Have a look at ipc.h for valid values. */
 enum LayoutAlgorithm default_layout = LAFloat;
 
-/* When multiple monitors are connected to your workstation, you might
- * want to select different initial workspaces on each monitor. For
- * example, when 3 monitors are connected, select workspace 20 on
- * monitor 0, workspace 2 on monitor 1, and workspace 12 on monitor 3.
- * If none of these configurations matches, use default_workspace. */
-int initial_workspaces[] = {
-    1, 3,
-};
 int default_workspace = 1;
+int max_workspaces = 3;
 
 #endif /* _WM_CONFIG_H */

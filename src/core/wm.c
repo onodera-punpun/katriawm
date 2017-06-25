@@ -62,7 +62,7 @@ struct Client
 struct Monitor
 {
     int active_workspace, recent_workspace;
-    int layouts[WORKSPACE_MAX + 1];
+    int layouts[127 + 1];
 
     /* Actual monitor size */
     int mx, my, mw, mh;
@@ -91,6 +91,7 @@ struct WorkareaInsets
 
 enum AtomsNet
 {
+    AtomNetCurrentDesktop,
     AtomNetSupported,
     AtomNetSupportingWMCheck,
     AtomNetWMName,
@@ -130,7 +131,7 @@ static Cursor cursor_normal;
 static Display *dpy;
 static Pixmap dec_tiles[DecStateLAST][DecLAST];
 static bool mute_urgency = false;
-static Window nofocus, root;
+static Window root;
 static XftColor font_color[DecStateLAST];
 static XftFont *font[FontLAST];
 static int monitors_num = 0, selmon = 0, prevmon = 0;
@@ -241,7 +242,6 @@ static int setup_monitors_compare(const void *a, const void *b);
 static bool setup_monitors_is_duplicate(XRRCrtcInfo *ci, bool *chosen,
                                         XRRScreenResources *sr);
 static void setup_monitors_read(void);
-static int setup_monitors_wsdef(int mi, int monitors_num);
 static void shutdown_monitors_free(void);
 static int xerror(Display *dpy, XErrorEvent *ee);
 
@@ -1485,8 +1485,8 @@ ipc_client_switch_workspace(char arg)
         return;
 
     i = arg;
-    i = i < WORKSPACE_MIN ? WORKSPACE_MIN : i;
-    i = i > WORKSPACE_MAX ? WORKSPACE_MAX : i;
+    i = i < 1 ? 1 : i;
+    i = i > max_workspaces ? max_workspaces : i;
 
     focus->workspace = i;
 
@@ -1508,8 +1508,8 @@ ipc_client_switch_workspace_adjacent(char arg)
 
     i = monitors[selmon].active_workspace;
     i += arg;
-    i = i < WORKSPACE_MIN ? WORKSPACE_MIN : i;
-    i = i > WORKSPACE_MAX ? WORKSPACE_MAX : i;
+    i = i < 1 ? 1 : i;
+    i = i > max_workspaces ? max_workspaces : i;
 
     focus->workspace = i;
 
@@ -1701,8 +1701,8 @@ ipc_placement_use(char arg)
         if (c->saved_monitors[ai] >= 0 && c->saved_monitors[ai] < monitors_num)
             c->mon = c->saved_monitors[ai];
 
-        if (c->saved_workspaces[ai] >= WORKSPACE_MIN &&
-            c->saved_workspaces[ai] <= WORKSPACE_MAX)
+        if (c->saved_workspaces[ai] >= 1 &&
+            c->saved_workspaces[ai] <= max_workspaces)
             c->workspace = c->saved_workspaces[ai];
     }
 
@@ -2536,8 +2536,8 @@ manage_goto_workspace(int i, bool force)
 {
     struct Client *c;
 
-    i = i < WORKSPACE_MIN ? WORKSPACE_MIN : i;
-    i = i > WORKSPACE_MAX ? WORKSPACE_MAX : i;
+    i = i < 1 ? max_workspaces : i;
+    i = i > max_workspaces ? 1 : i;
 
     D fprintf(stderr, __NAME_WM__": Changing to workspace %d\n", i);
 
@@ -2568,6 +2568,10 @@ manage_goto_workspace(int i, bool force)
     for (c = clients; c; c = c->next)
         if (c->mon == selmon && c->workspace != i)
             manage_hide(c);
+
+    long data[] = { i-1 };
+    XChangeProperty(dpy, root, atom_net[AtomNetCurrentDesktop], XA_CARDINAL, 32,
+                    PropModeReplace, (unsigned char *)data, 1);
 
     manage_arrange(selmon);
 }
@@ -2967,48 +2971,12 @@ manage_xfocus(struct Client *c)
         publish_state();
 
         if (!c->never_focus)
-        {
-            /* XXX This leads to EnterNotify events with "focus
-             * YES" and I don't think there is a fix.
-             *
-             * Here's the scenario. Window B overlaps window A. The
-             * position of window C does not matter. The focus history
-             * is "B, C, A", so when window B dies, we are going to
-             * focus window C and window A is NOT to receive focus.
-             *
-             * Now move the mouse pointer to a position inside of window
-             * B where, would we remove window B, the mouse would be
-             * inside of window A (remember, the two windows overlap).
-             *
-             * Now close window B. We get an UnmapNotify event and move
-             * focus to window C. In the meantime, however, window A
-             * received an EnterNotify event because the mouse is now
-             * inside of its area. That's correct. However, that
-             * EnterNotify event also says "focus YES" which some
-             * applications could interpret as "I AM FOCUSED". Even
-             * though we do transfer the focus afterwards and the
-             * applications in question get a FocusOut event, said
-             * applications might be confused enough not to "respond" to
-             * that FocusOut event. They might still assume to be
-             * focused.
-             *
-             * There is no way to tell the X server to revert the input
-             * focus to *one particular window* ("nofocus" in our case)
-             * when a window dies. I speculate that this is a corner
-             * case where we would *need* reparenting: We could then
-             * revert the focus to the parent window of the dying window
-             * which is *our* frame window. Now, we would be able to
-             * properly transfer the focus to another window. After
-             * that, we can kill the frame window. Now finally, window A
-             * does still receive an EnterNotify event but with "focus
-             * NO". */
             XSetInputFocus(dpy, c->win, RevertToParent, CurrentTime);
-        }
 
         manage_xsend_icccm(c, atom_wm[AtomWMTakeFocus]);
     }
     else
-        XSetInputFocus(dpy, nofocus, RevertToParent, CurrentTime);
+        XSetInputFocus(dpy, root, RevertToParent, CurrentTime);
 }
 
 void
@@ -3078,7 +3046,7 @@ publish_state(void)
      * bytes indicate the active layout on each monitor (note: different
      * layouts might be active on different workspaces on each monitor,
      * but they are not visible anyway, so they're not included).
-     * Following that, we need WORKSPACE_MAX / 8 = ~16 bytes per monitor
+     * Following that, we need max_workspaces / 8 = ~16 bytes per monitor
      * to indicate whether that workspace is occupied. We need the same
      * amount of data to indicate whether a workspace has the urgency
      * hint set. */
@@ -3177,7 +3145,6 @@ void
 setup(void)
 {
     size_t i;
-    XSetWindowAttributes wa = { .override_redirect = True };
 
     if (!setlocale(LC_CTYPE, "") || !XSupportsLocale())
         fprintf(stderr, __NAME_WM__": Could not set locale\n");
@@ -3247,31 +3214,13 @@ setup(void)
                  monitors[selmon].wx + monitors[selmon].ww / 2,
                  monitors[selmon].wy + monitors[selmon].wh / 2);
 
-    /* Create a window which will receive input focus when no real
-     * window has focus. We do this to avoid any kind of "*PointerRoot"
-     * usage. Focusing the root window confuses applications and kind of
-     * returns to sloppy focus. */
-    nofocus = XCreateSimpleWindow(dpy, root, -10, -10, 1, 1, 0, 0, 0);
-    XChangeWindowAttributes(dpy, nofocus, CWOverrideRedirect, &wa);
-    XMapWindow(dpy, nofocus);
-    manage_xfocus(NULL);
-
-    /* Set up _NET_SUPPORTING_WM_CHECK. */
-    XChangeProperty(dpy, root, atom_net[AtomNetSupportingWMCheck], XA_WINDOW,
-                    32, PropModeReplace, (unsigned char *)&nofocus, 1);
-    XChangeProperty(dpy, nofocus, atom_net[AtomNetSupportingWMCheck], XA_WINDOW,
-                    32, PropModeReplace, (unsigned char *)&nofocus, 1);
-    XChangeProperty(dpy, nofocus, atom_net[AtomNetWMName],
-                    XInternAtom(dpy, "UTF8_STRING", False), 8,
-                    PropModeReplace, (unsigned char *)__NAME_WM__,
-                    strlen(__NAME_WM__));
-
     publish_state();
 }
 
 void
 setup_hints(void)
 {
+    atom_net[AtomNetCurrentDesktop] = XInternAtom(dpy, "_NET_CURRENT_DESKTOP", False);
     atom_net[AtomNetSupported] = XInternAtom(dpy, "_NET_SUPPORTED", False);
     atom_net[AtomNetSupportingWMCheck] = XInternAtom(dpy, "_NET_SUPPORTING_WM_CHECK", False);
     atom_net[AtomNetWMName] = XInternAtom(dpy, "_NET_WM_NAME", False);
@@ -3394,9 +3343,13 @@ setup_monitors_read(void)
 
     qsort(monitors, monitors_num, sizeof (struct Monitor), setup_monitors_compare);
 
+    long data[] = { default_workspace-1 };
+    XChangeProperty(dpy, root, atom_net[AtomNetCurrentDesktop], XA_CARDINAL, 32,
+                    PropModeReplace, (unsigned char *)data, 1);
+
     for (mi = 0; mi < monitors_num; mi++)
     {
-        monitors[mi].active_workspace = setup_monitors_wsdef(mi, monitors_num);
+        monitors[mi].active_workspace = default_workspace;
         monitors[mi].recent_workspace = monitors[mi].active_workspace;
         for (li = 0;
              li < sizeof monitors[mi].layouts / sizeof monitors[mi].layouts[0];
@@ -3414,24 +3367,6 @@ setup_monitors_read(void)
                     monitors[mi].mx, monitors[mi].my,
                     monitors[mi].mw, monitors[mi].mh);
     }
-}
-
-int
-setup_monitors_wsdef(int mi, int monitors_num)
-{
-    size_t i = 0;
-
-    /* See explanation and examples in config.def.h */
-
-    while (i < sizeof initial_workspaces / sizeof initial_workspaces[0])
-    {
-        if (initial_workspaces[i] == monitors_num)
-            return initial_workspaces[i + 1 + mi];
-
-        i += initial_workspaces[i];
-    }
-
-    return default_workspace;
 }
 
 void
