@@ -35,7 +35,7 @@ enum LayoutAlgorithm default_layout = LAFloat;
  * monitor 0, workspace 2 on monitor 1, and workspace 12 on monitor 3.
  * If none of these configurations matches, use default_workspace. */
 int initial_workspaces[] = {
-    1, 3,      /* 2 monitors connected */
+    1, 3,
 };
 int default_workspace = 1;
 

@@ -353,8 +353,16 @@ client_get_for_window(Window win)
 void
 client_save(struct Client *c)
 {
-    c->next = clients;
-    clients = c;
+    struct Client *last;
+
+    if (clients == NULL)
+        clients = c;
+    else
+    {
+        for (last = clients; last->next; last = last->next)
+            /* no body */;
+        last->next = c;
+    }
 }
 
 void
