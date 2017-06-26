@@ -91,6 +91,7 @@ struct WorkareaInsets
 
 enum AtomsNet
 {
+    AtomNetActiveWindow,
     AtomNetCurrentDesktop,
     AtomNetSupported,
     AtomNetSupportingWMCheck,
@@ -308,6 +309,7 @@ cleanup(void)
             XFreePixmap(dpy, dec_tiles[i][j]);
 
     XDeleteProperty(dpy, root, atom_state);
+    XDeleteProperty(dpy, root, atom_net[AtomNetActiveWindow]);
     XDeleteProperty(dpy, root, atom_net[AtomNetSupported]);
     XFreeCursor(dpy, cursor_normal);
 
@@ -2971,13 +2973,22 @@ manage_xfocus(struct Client *c)
         publish_state();
 
         if (!c->never_focus)
+        {
             XSetInputFocus(dpy, c->win, RevertToParent, CurrentTime);
+            XChangeProperty(dpy, root, atom_net[AtomNetActiveWindow],
+                            XA_WINDOW, 32, PropModeReplace,
+                            (unsigned char *) &(c->win), 1);
+        }
 
         manage_xsend_icccm(c, atom_wm[AtomWMTakeFocus]);
     }
     else
+    {
         XSetInputFocus(dpy, root, RevertToParent, CurrentTime);
+        XDeleteProperty(dpy, root, atom_net[AtomNetSupported]);
+    }
 }
+
 
 void
 manage_xraise(struct Client *c)
@@ -3220,6 +3231,7 @@ setup(void)
 void
 setup_hints(void)
 {
+    atom_net[AtomNetActiveWindow] = XInternAtom(dpy, "_NET_ACTIVE_WINDOW", False);
     atom_net[AtomNetCurrentDesktop] = XInternAtom(dpy, "_NET_CURRENT_DESKTOP", False);
     atom_net[AtomNetSupported] = XInternAtom(dpy, "_NET_SUPPORTED", False);
     atom_net[AtomNetSupportingWMCheck] = XInternAtom(dpy, "_NET_SUPPORTING_WM_CHECK", False);
